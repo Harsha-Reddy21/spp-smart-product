@@ -57,7 +57,7 @@ const S = {
 
 const INIT_MSG = {
   role:"assistant", id:0,
-  content:"Hello! I'm SAGE — your AI Governance & Evaluation assistant.\n\nI'll guide you through registering your AI system. The three blocks on the right fill in automatically as we talk, and every answer is scored in real-time.\n\nYou can answer multiple questions at once — for example:\n\"My system is called SmartAI, owned by Jane Smith in IT, and we don't process personal data.\"\nI'll extract all of it automatically.\n\nLet's begin — what is the name of your AI system?",
+  content:"Hello! I'm SAGE — your AI Governance & Evaluation assistant.\n\nI'll guide you through the AI Review submission form. The three blocks on the right fill in automatically as we talk, and every answer is scored in real-time.\n\nYou can answer multiple questions at once — for example:\n\"This is a new submission for a system called SmartPredict, sponsored by the Data Science org.\"\nI'll extract all of it automatically.\n\nLet's begin — what type of submission is this? Are you re-reviewing an existing system due to a scope change, or creating a new submission?",
 };
 
 export default function App() {
@@ -66,9 +66,9 @@ export default function App() {
   const [busy,       setBusy]       = useState(false);
   const [status,     setStatus]     = useState("");
   const [rawAnswers, setRawAnswers] = useState({});
-  const [blocks,     setBlocks]     = useState({ user:"", system:"", tech:"" });
+  const [blocks,     setBlocks]     = useState({ system:"", user:"", tech:"" });
   const [conf,       setConf]       = useState({});
-  const [pendingQId, setPendingQId] = useState("AI-Q1");
+  const [pendingQId, setPendingQId] = useState("AI-Q2");
   const [activeQIds, setActiveQIds] = useState(() => getActiveQIds({}));
   const [rescoring,  setRescoring]  = useState(false);
   const [submitted,  setSubmitted]  = useState(false);
@@ -89,7 +89,7 @@ export default function App() {
     setMsgs([INIT_MSG]);
     setInput("");
     setRawAnswers({});
-    setBlocks({ user:"", system:"", tech:"" });
+    setBlocks({ system:"", user:"", tech:"" });
     setConf({});
     setPendingQId("AI-Q1");
     setActiveQIds(getActiveQIds({}));
@@ -289,7 +289,7 @@ export default function App() {
         <div style={S.chatCol}>
           <div style={S.statusBar}>
             <div style={{ display:"flex", gap:14 }}>
-              {["user","system","tech"].map(p => {
+              {["system","user","tech"].map(p => {
                 const pQs = QUESTIONS.filter(q => activeQIds.has(q.id) && q.panel===p);
                 const done = pQs.filter(q => q.id in rawAnswers).length;
                 const acc  = PANELS[p].accent;
@@ -369,7 +369,7 @@ export default function App() {
 
         {/* ── THREE BLOCKS ── */}
         <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
-          {["user","system","tech"].map(panel => (
+          {["system","user","tech"].map(panel => (
             <Block
               key={panel}
               panel={panel}

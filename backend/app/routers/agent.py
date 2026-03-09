@@ -76,10 +76,10 @@ async def reset_session():
     """
     return {
         "status": "reset",
-        "pending_q_id": "AI-Q1",
+        "pending_q_id": QUESTIONS[0].id if QUESTIONS else "AI-Q1",
         "raw_answers": {},
         "conf_scores": {},
-        "blocks": {"user": "", "system": "", "tech": ""},
+        "blocks": {"system": "", "user": "", "tech": ""},
     }
 
 
