@@ -4,8 +4,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    openai_api_key: str = ""
-    openai_model: str = "gpt-4o"
+    cortex_client_id: str = ""
+    cortex_client_secret: str = ""
+    cortex_tenant_id: str = ""
+    cortex_api_url: str = "https://gateway.apim-dev.lilly.com/cortex/model/ask"
+    cortex_model: str = "speqe-small-embedding"
 
     # Scoring constants — mirrors scoring_service.py
     mandatory_threshold: float = 0.6

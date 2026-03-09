@@ -1,5 +1,5 @@
 """
-Thin async wrapper around the OpenAI Chat Completions API.
+Thin async wrapper around the Cortex LLM API with OAuth token auth.
 """
 import json
 import logging
@@ -8,6 +8,35 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+_cached_token: str | None = None
+
+
+async def _get_oauth_token() -> str:
+    """
+    Obtain an OAuth token from Azure AD using client credentials.
+    Caches the token for reuse within the process lifetime.
+    """
+    global _cached_token
+    if _cached_token:
+        return _cached_token
+
+    oauth_url = (
+        f"https://login.microsoftonline.com/{settings.cortex_tenant_id}/oauth2/v2.0/token"
+    )
+    payload = {
+        "client_id": settings.cortex_client_id,
+        "client_secret": settings.cortex_client_secret,
+        "grant_type": "client_credentials",
+        "scope": "api://Cortex_Engineering.lilly.com/.default",
+    }
+
+    async with httpx.AsyncClient(timeout=30.0, verify=False) as client:
+        resp = await client.post(oauth_url, data=payload)
+        resp.raise_for_status()
+        _cached_token = resp.json()["access_token"]
+        logger.info("Cortex OAuth token obtained successfully")
+        return _cached_token
+
 
 async def call_llm(
     messages: list[dict],
@@ -15,29 +44,32 @@ async def call_llm(
     max_tokens: int = 800,
 ) -> str:
     """
-    Call OpenAI GPT and return the assistant reply text.
-    Raises httpx.HTTPStatusError on non-2xx responses.
+    Build a prompt from system + messages, send it to the Cortex model/ask API,
+    and return the response text.
     """
-    oai_messages = [{"role": "system", "content": system}] + messages
-    logger.info("LLM call  model=%s  max_tokens=%d", settings.openai_model, max_tokens)
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        resp = await client.post(
-            "https://api.openai.com/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {settings.openai_api_key}",
-                "content-type": "application/json",
-            },
-            json={
-                "model": settings.openai_model,
-                "max_tokens": max_tokens,
-                "messages": oai_messages,
-            },
-        )
+    # Build a single query string from system prompt + conversation
+    parts = [f"[System]: {system}"]
+    for m in messages:
+        role = m.get("role", "user").capitalize()
+        parts.append(f"[{role}]: {m['content']}")
+    query = "\n".join(parts)
+
+    token = await _get_oauth_token()
+    url = f"{settings.cortex_api_url}/{settings.cortex_model}"
+    params = {"q": query, "stream": "false", "no_summary": "true"}
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}",
+    }
+
+    logger.info("Cortex LLM call  model=%s  query_len=%d", settings.cortex_model, len(query))
+
+    async with httpx.AsyncClient(timeout=60.0, verify=False) as client:
+        resp = await client.get(url, params=params, headers=headers)
         resp.raise_for_status()
         data = resp.json()
-        reply = data["choices"][0]["message"]["content"]
-        usage = data.get("usage", {})
-        logger.info("LLM done   tokens=%s", usage.get("total_tokens", "?"))
+        reply = data.get("message", "")
+        logger.info("Cortex LLM done  response_len=%d", len(reply))
         return reply
 
 
