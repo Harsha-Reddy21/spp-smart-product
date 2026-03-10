@@ -56,7 +56,7 @@ async def call_llm(
 
     token = await _get_oauth_token()
     url = f"{settings.cortex_api_url}/{settings.cortex_model}"
-    params = {"q": query, "stream": "false", "no_summary": "true"}
+    params = {"q": query, "stream": "false", "no_summary": "false"}
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {token}",
@@ -68,6 +68,8 @@ async def call_llm(
         resp = await client.get(url, params=params, headers=headers)
         resp.raise_for_status()
         data = resp.json()
+        print("dataaaaaa")
+        print(data)
         reply = data.get("message", "")
         logger.info("Cortex LLM done  response_len=%d", len(reply))
         return reply

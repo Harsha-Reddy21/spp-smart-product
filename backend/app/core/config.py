@@ -7,8 +7,8 @@ class Settings(BaseSettings):
     cortex_client_id: str = ""
     cortex_client_secret: str = ""
     cortex_tenant_id: str = ""
-    cortex_api_url: str = "https://gateway.apim-dev.lilly.com/cortex/model/ask"
-    cortex_model: str = "speqe-small-embedding"
+    cortex_api_url: str = "https://gateway.apim.lilly.com/cortex/model/ask"
+    cortex_model: str = "spp-basic-agent"
 
     # Scoring constants — mirrors scoring_service.py
     mandatory_threshold: float = 0.6
