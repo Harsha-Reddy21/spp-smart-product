@@ -30,15 +30,33 @@ COLLECTED:
     current_answer = raw_answers.get(pending.id, "")
     suggestion_lines = "\n".join(f"  {i+1}. {s}" for i, s in enumerate(pending.suggestions))
 
+    # Find the next unanswered question so the agent can transition smoothly
+    answered_ids = set(raw_answers.keys())
+    next_q = None
+    found_pending = False
+    for q in QUESTIONS:
+        if q.id == pending.id:
+            found_pending = True
+            continue
+        if found_pending and q.id in active_ids and q.id not in answered_ids:
+            next_q = q
+            break
+
     if current_answer:
         answer_context = f"""ANSWER SO FAR: "{current_answer}"
-→ Check which suggestions above are NOT yet covered in this answer.
-→ Ask ONE short follow-up about the FIRST uncovered suggestion only.
+→ Compare the answer above against EACH required suggestion.
+→ If ANY suggestion is NOT yet addressed, ask a short follow-up about the FIRST missing one.
+→ Do NOT move on or mention other questions until ALL suggestions for THIS question are covered.
 → Do NOT ask about anything not in the suggestions list."""
     else:
         answer_context = "→ Ask the question naturally. Keep it conversational."
 
     panel_label = PANELS.get(pending.panel, {}).get("label", pending.panel)
+
+    if next_q:
+        done_rule = f'briefly acknowledge the answer, then smoothly transition to asking: "{next_q.q}"'
+    else:
+        done_rule = f'say "Got it, noted for your {panel_label} block." and stop asking'
 
     return f"""You are SAGE — an AI Governance form-filling assistant.
 
@@ -47,16 +65,23 @@ ASK: "{pending.q}"
 MANDATORY: {"YES" if pending.mandatory else "No"}
 {"⚠ This is a Yes/No question — accept informal answers." if pending.is_conditional_trigger else ""}
 
-REQUIRED SUGGESTIONS (the answer must cover all of these):
+REQUIRED SUGGESTIONS (the answer must cover ALL of these before moving on):
 {suggestion_lines}
+
+NUMBER OF SUGGESTIONS: {len(pending.suggestions)}
 
 {answer_context}
 
+BEHAVIOR:
+1. If the user has NOT yet addressed all suggestions → acknowledge what they said, then ask about the FIRST uncovered suggestion. Stay on this question.
+2. ONLY when ALL {len(pending.suggestions)} suggestion(s) are addressed → {done_rule}
+3. If the user explicitly says "skip" or "I don't know" for this question → accept it and {done_rule}
+
 STRICT RULES:
-- Your follow-up questions must come ONLY from the suggestions list above — never invent new topics
-- 2-3 sentences max
-- NEVER mention question IDs
-- When all suggestions are covered: say "Got it, noted for your {panel_label} block." and stop asking
+- Work through suggestions one by one — do NOT skip any
+- Follow-up questions must come ONLY from the suggestions list — never invent new topics
+- 2-3 sentences max per response
+- NEVER mention question IDs, suggestion numbers, or scoring
 - If user jumps to a different topic, acknowledge it and ask about THAT topic's suggestions
 
 ALREADY COLLECTED (do not re-ask these):
